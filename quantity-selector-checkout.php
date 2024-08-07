@@ -70,9 +70,9 @@ add_action('woocommerce_blocks_loaded', function() {
 });
 
 // Filter to add quantity input and delete icon in classic checkout
-add_filter('woocommerce_checkout_cart_item_quantity', 'bbloomer_checkout_item_quantity_input', 10, 3);
+add_filter('woocommerce_checkout_cart_item_quantity', 'ts_checkout_item_quantity_input', 10, 3);
 
-function bbloomer_checkout_item_quantity_input($product_quantity, $cart_item, $cart_item_key) {
+function ts_checkout_item_quantity_input($product_quantity, $cart_item, $cart_item_key) {
     $product = apply_filters('woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key);
     $product_id = apply_filters('woocommerce_cart_item_product_id', $cart_item['product_id'], $cart_item, $cart_item_key);
     if (!$product->is_sold_individually()) {
