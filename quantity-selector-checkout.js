@@ -33,13 +33,32 @@ document.addEventListener('DOMContentLoaded', function() {
         itemName: modifyItemName,
     });
 
-    // Handle quantity change and send data to the server
-    document.addEventListener('change', function(event) {
+    // Debounce function to limit the rate of function execution
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    // Lock to prevent simultaneous updates and store pending updates
+    let isUpdating = false;
+    let pendingUpdate = null;
+
+    // Handle quantity change and send data to the server with debouncing
+    const handleQuantityChange = debounce(function(event) {
         if (event.target.classList.contains('quantity-input')) {
             const itemId = event.target.getAttribute('data-item-id');
             const quantity = event.target.value;
 
-            // Call extensionCartUpdate to send data to the server
+            if (isUpdating) {
+                pendingUpdate = { itemId, quantity };
+                return; // Queue the update
+            }
+
+            isUpdating = true;
+
             const { extensionCartUpdate } = window.wc.blocksCheckout;
             extensionCartUpdate({
                 namespace: 'quantity-selector',
@@ -47,16 +66,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     itemId: itemId,
                     quantity: quantity
                 },
+            }).then(response => {
+                // Process the next pending update if any
+                if (pendingUpdate) {
+                    const nextUpdate = pendingUpdate;
+                    pendingUpdate = null;
+                    handleQuantityChange({ target: { classList: { contains: () => true }, getAttribute: () => nextUpdate.itemId, value: nextUpdate.quantity } });
+                }
+            }).finally(() => {
+                isUpdating = false; // Release the lock after update
             });
         }
-    });
+    }, 1000); // Debounce delay of 1000ms
+
+    // Handle quantity change event
+    document.addEventListener('change', handleQuantityChange);
 
     // Handle delete icon click and send data to the server
     document.addEventListener('click', function(event) {
         if (event.target.classList.contains('delete-icon')) {
             const itemId = event.target.getAttribute('data-item-id');
 
-            // Call extensionCartUpdate to remove the item
             const { extensionCartUpdate } = window.wc.blocksCheckout;
             extensionCartUpdate({
                 namespace: 'quantity-selector',
